@@ -1,1 +1,1 @@
-# trends_scripts
+# TReNDS scripts
