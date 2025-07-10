@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ulimit -n 65536
+
 # The script assumes it is /root/file_info/partition_script.sh
 #
 # This script needs to run every day and collect statistics on how
@@ -18,7 +20,32 @@ ls -d -1 "/data/users2/"**/ >> "partitions.txt"
 ls -d -1 "/data/users3/"**/ >> "partitions.txt"
 ls -d -1 "/data/users4/"**/ >> "partitions.txt"
 
-cat "partitions.txt" | /trdapps/linux-x86_64/bin/parallel -j 50 /trdapps/linux-x86_64/bin/dust -d 0 -s -c -b -P -p > storage_users_stats.txt
+# double check that everything is mounted
+ls -lha /data/users1 > /dev/null &
+ls -lha /data/users2 > /dev/null &
+ls -lha /data/users3 > /dev/null &
+ls -lha /data/users4 > /dev/null &
+wait
+
+awk '
+  BEGIN{srand()}
+  {
+    if ($0 ~ /users1/) a1[++n1] = $0
+    else if ($0 ~ /users2/) a2[++n2] = $0
+    else if ($0 ~ /users3/) a3[++n3] = $0
+    else if ($0 ~ /users4/) a4[++n4] = $0
+  }
+  END{
+    max = n1 > n2 ? n1 : n2
+    max = max > n3 ? max : n3
+    max = max > n4 ? max : n4
+    for(i=1; i<=max; i++) {
+      if(i<=n1) print a1[i]
+      if(i<=n2) print a2[i]
+      if(i<=n3) print a3[i]
+      if(i<=n4) print a4[i]
+    }
+  }' "partitions.txt" | /trdapps/linux-x86_64/bin/parallel -j 50 /trdapps/linux-x86_64/bin/dust -d 0 -s -c -b -P -p > storage_users_stats.txt
 awk '{print $1, $3}' storage_users_stats.txt | sort -hr > storage_users_stats_sorted_all.txt
 
 # Get the current date and time
